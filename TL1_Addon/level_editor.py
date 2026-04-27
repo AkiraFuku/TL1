@@ -1,4 +1,5 @@
 import bpy
+import math
 bl_info={
     "name": "レベルエディタ",
     "author": "Fuku Akira",
@@ -38,6 +39,32 @@ class MYADDON_OT_ICO_sphere(bpy.types. Operator):
         print("ICO球を生成しました")
         #オペレータの命令終了を通知
         return {'FINISHED'}   
+# オペレータ シーン出力
+class MYADDON_OT_export_scene(bpy.types. Operator):
+    bl_idname = "myaddon.myaddon_ot_export_scene"
+    bl_label = "シーン出力"
+    bl_description = "シーン情報をExportする"
+    #メニューを実行したときに呼ばれるコールバック関数
+    def execute(self, context):
+        print("シーン情報をExportします")
+        for object in bpy.context.scene.objects:
+            print(object.type + " - " + object.name)
+            trans, rot, scale =object.matrix_local.decompose()
+            rot = rot.to_euler()
+            rot.x=math.degrees(rot.x)
+            rot.y=math.degrees(rot.y)
+            rot.z=math.degrees(rot.z)
+            #オブジェクトの位置、回転、スケールを出力
+            print("trans(%f, %f, %f)" % (trans.x, trans.y, trans.z))
+            print("rot(%f, %f, %f)" % (rot.x, rot.y, rot.z))
+            print("scale(%f, %f, %f)" % (scale.x, scale.y, scale.z))
+            if object.parent is not None:
+                print("parent: " + object.parent.name)
+            print()
+        print("シーン情報をExportしました")
+        self.report({'INFO'}, "シーン情報をExportしました")
+        #オペレータの命令終了を通知
+        return {'FINISHED'}   
     
 #トップバーの拡張メニュー
 class TOPBAR_MT_my_menu(bpy.types. Menu):
@@ -52,11 +79,13 @@ class TOPBAR_MT_my_menu(bpy.types. Menu):
     #トップバーの「エディターメニュー」に項目(オペレータ)を追加 
          self.layout.operator(MYADDON_OT_stretch_vertex.bl_idname, text=MYADDON_OT_stretch_vertex.bl_label)
          self.layout.operator(MYADDON_OT_ICO_sphere.bl_idname, text=MYADDON_OT_ICO_sphere.bl_label)
+         self.layout.operator(MYADDON_OT_export_scene.bl_idname, text=MYADDON_OT_export_scene.bl_label)
         #既存のメニューにサブメニューを追加
     def submenu(self, context):
     # ID指定でサブメニューを追加
             self.layout.menu(TOPBAR_MT_my_menu.bl_idname)
 classes=(
+     MYADDON_OT_export_scene,
      MYADDON_OT_ICO_sphere,
      MYADDON_OT_stretch_vertex,
      TOPBAR_MT_my_menu,
