@@ -1,5 +1,6 @@
 import bpy
 import math
+import bpy_extras
 bl_info={
     "name": "レベルエディタ",
     "author": "Fuku Akira",
@@ -40,33 +41,59 @@ class MYADDON_OT_ICO_sphere(bpy.types. Operator):
         #オペレータの命令終了を通知
         return {'FINISHED'}   
 # オペレータ シーン出力
-class MYADDON_OT_export_scene(bpy.types. Operator):
+class MYADDON_OT_export_scene(bpy.types. Operator, bpy_extras.io_utils.ExportHelper):
     bl_idname = "myaddon.myaddon_ot_export_scene"
     bl_label = "シーン出力"
     bl_description = "シーン情報をExportする"
+    filename_ext = ".scene"
     #メニューを実行したときに呼ばれるコールバック関数
     def execute(self, context):
         print("シーン情報をExportします")
-        for object in bpy.context.scene.objects:
-            print(object.type + " - " + object.name)
-            trans, rot, scale =object.matrix_local.decompose()
-            rot = rot.to_euler()
-            rot.x=math.degrees(rot.x)
-            rot.y=math.degrees(rot.y)
-            rot.z=math.degrees(rot.z)
-            #オブジェクトの位置、回転、スケールを出力
-            print("trans(%f, %f, %f)" % (trans.x, trans.y, trans.z))
-            print("rot(%f, %f, %f)" % (rot.x, rot.y, rot.z))
-            print("scale(%f, %f, %f)" % (scale.x, scale.y, scale.z))
-            if object.parent is not None:
-                print("parent: " + object.parent.name)
-            print()
+        self.export()
         print("シーン情報をExportしました")
         self.report({'INFO'}, "シーン情報をExportしました")
         #オペレータの命令終了を通知
         return {'FINISHED'}   
-    
-#トップバーの拡張メニュー
+    def export(self):
+        """シーン情報をExportする処理"""
+        print("シーン情報出力開始...%r" % self.filepath)
+        with open(self.filepath, 'wt') as file:
+            self.Write_and_print(file, "SCENE")
+            for object in bpy.context.scene.objects:
+                if(object.parent):
+                    continue
+                self.parse_scene_recursive(file, object, 0)
+                if object.parent is not None:
+                    self.Write_and_print(file, "parent: " + object.parent.name)
+                self.Write_and_print(file, "")
+    def Write_and_print(self, file, text):
+        """ファイルにテキストを書き込み、同時にコンソールにも出力する"""
+        print(text)
+        file.write(text + "\n")
+    def parse_scene_recursive(self, file, object, level):
+        """シーン解析用再帰関数"""
+        #インデントを作成
+        indent =''
+        for i in range(level):
+            indent += "\t"
+        #オブジェクトの情報を出力
+        self.Write_and_print(file, indent + object.type + " - " + object.name)
+        trans, rot, scale =object.matrix_local.decompose()
+        rot = rot.to_euler()
+        rot.x=math.degrees(rot.x)
+        rot.y=math.degrees(rot.y)
+        rot.z=math.degrees(rot.z)
+
+        self.Write_and_print(file, indent + "Trans(%f, %f, %f)" % (trans.x, trans.y, trans.z))
+        self.Write_and_print(file, indent + "Rot(%f, %f, %f)" % (rot.x, rot.y, rot.z))
+        self.Write_and_print(file, indent + "Scale(%f, %f, %f)" % (scale.x, scale.y, scale.z))
+        self.Write_and_print(file, "" )
+        #子オブジェクトがある場合は再帰的に解析
+        for child in object.children:
+            self.parse_scene_recursive(file, child, level + 1)
+
+
+    #トップバーの拡張メニュー
 class TOPBAR_MT_my_menu(bpy.types. Menu):
     #Blenderがクラスを識別する為の固有の文字列
     bl_idname = "TOPBAR_MT_my_menu"
