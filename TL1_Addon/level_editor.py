@@ -14,6 +14,46 @@ bl_info={
     "category": "Object"
 }
 
+
+    
+    
+
+#パネル　ファイル名
+class OBJECT_PT_file_name(bpy.types.Panel):
+    """オブジェクトのファイルネームパネル"""
+    bl_idname = "OBJECT_PT_file_name"
+    bl_label = "FileName"
+    bl_space_type = "PROPERTIES"
+    bl_region_type= "WINDOW"
+    bl_context = "object"
+    #サブメニューの描画
+    def draw(self, context):
+       
+     self.layout.operator(MYADDON_OT_stretch_vertex.bl_idname)
+     self.layout.operator(MYADDON_OT_ICO_sphere.bl_idname,text=MYADDON_OT_ICO_sphere.bl_label)
+     self.layout.operator(MYADDON_OT_export_scene.bl_idname,text=MYADDON_OT_export_scene.bl_label)
+
+     if "file_name" in context.object:
+         # 既にプロパティがあれば、プロパティを表示
+         self.layout.prop(context.object, '["file_name"]', text=self.bl_label)
+     else:
+         #プロパティがなければ、プロパティ追加ボタンを表示
+         self.layout.operator(MYADDON_OT_add_filwname.bl_idname,text=MYADDON_OT_add_filwname.bl_label)
+    
+  
+
+
+#カスタムプロパティ
+class MYADDON_OT_add_filwname(bpy.types.Operator):
+    bl_idname = "myaddon.myaddon_ot_add_filename"
+    bl_label = "FileName 追加"
+    bl_description = "['file_name'] カスタムプロパティを追加します"
+    bl_options = {"REGISTER", "UNDO"}
+    def execute(self, context):
+        #['file_name'] カスタムプロパティを追加
+        context.object["file_name"] = ""
+        return {"FINISHED"}
+
 # オペレータ 頂点を伸ばす
 class MYADDON_OT_stretch_vertex(bpy.types. Operator):
     bl_idname = "myaddon.myaddon_ot_stretch_vertex"
@@ -77,7 +117,7 @@ class MYADDON_OT_export_scene(bpy.types. Operator, bpy_extras.io_utils.ExportHel
         for i in range(level):
             indent += "\t"
         #オブジェクトの情報を出力
-        self.Write_and_print(file, indent + object.type + " - " + object.name)
+        self.Write_and_print(file, indent + object.type )
         trans, rot, scale =object.matrix_local.decompose()
         rot = rot.to_euler()
         rot.x=math.degrees(rot.x)
@@ -88,6 +128,11 @@ class MYADDON_OT_export_scene(bpy.types. Operator, bpy_extras.io_utils.ExportHel
         self.Write_and_print(file, indent + "Rot(%f, %f, %f)" % (rot.x, rot.y, rot.z))
         self.Write_and_print(file, indent + "Scale(%f, %f, %f)" % (scale.x, scale.y, scale.z))
         self.Write_and_print(file, "" )
+        #カスタムプロパティ
+        if "file_name" in object:
+            self.Write_and_print(file, indent + "Name %s" % object["file_name"])
+        self.Write_and_print(file, indent + 'End')
+        self.Write_and_print(file,'')
         #子オブジェクトがある場合は再帰的に解析
         for child in object.children:
             self.parse_scene_recursive(file, child, level + 1)
@@ -111,29 +156,34 @@ class TOPBAR_MT_my_menu(bpy.types. Menu):
     def submenu(self, context):
     # ID指定でサブメニューを追加
             self.layout.menu(TOPBAR_MT_my_menu.bl_idname)
+
+
 classes=(
+     TOPBAR_MT_my_menu,
      MYADDON_OT_export_scene,
      MYADDON_OT_ICO_sphere,
      MYADDON_OT_stretch_vertex,
-     TOPBAR_MT_my_menu,
+    
+     MYADDON_OT_add_filwname,
+     OBJECT_PT_file_name
      )
 #class MYADDON_OT_stretch_vertex(bpy.types.Operator):
 
      
 #メニュー項目
-def draw_menu_manual(self, context):
-    self.layout.operator("wm.url_open_preset",text="manual",icon='HELP')
+def draw_my_menu_to_topbar(self, context):
+    self.layout.menu("TOPBAR_MT_my_menu")
 
 def register():
     for cls in classes:
          bpy.utils.register_class(cls)
-    bpy.types.TOPBAR_MT_editor_menus.append(TOPBAR_MT_my_menu.submenu)
+    bpy.types.TOPBAR_MT_editor_menus.append(draw_my_menu_to_topbar)
     print("レベルエディタが有効化されました。")
 
 def unregister():
     for cls in classes:
          bpy.utils.unregister_class(cls)
-    bpy.types.TOPBAR_MT_editor_menus.remove(TOPBAR_MT_my_menu.submenu)
+    bpy.types.TOPBAR_MT_editor_menus.remove(draw_my_menu_to_topbar)
     print("レベルエディタが無効化されました。")
 
 
