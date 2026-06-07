@@ -1,6 +1,9 @@
 import bpy
 import math
 import bpy_extras
+import gpu
+import gpu_extras.batch
+import copy
 bl_info={
     "name": "レベルエディタ",
     "author": "Fuku Akira",
@@ -14,9 +17,59 @@ bl_info={
     "category": "Object"
 }
 
+#コライダー描画
+class DrawCollider:
+    handle =None
 
-    
-    
+    def draw_colider():
+        vertices={"pos":[]}
+        indices = []
+
+        ofsets=[
+                 [-0.5, -0.5, -0.5],#左下後
+                 [+0.5, -0.5, -0.5],#右下後
+                 [-0.5, +0.5, -0.5],#左上後
+                 [+0.5, +0.5, -0.5],#右上後
+                 [-0.5, -0.5, +0.5],#左下前
+                 [+0.5, -0.5, +0.5],#右下前
+                 [-0.5, +0.5, +0.5],#左上前
+                 [+0.5, +0.5, +0.5],#右上前
+                
+        ]
+        size =[2,2,2]
+
+        for object in bpy.context.scene.objects:
+            start=len(vertices["pos"])
+            for ofset in ofsets:
+                pos =copy.copy(object.location)
+                pos.x += ofset[0] * size[0]
+                pos.y += ofset[1] * size[1]
+                pos.z += ofset[2] * size[2]
+                vertices["pos"].append(pos)
+                indices.append([start + 0, start + 1])
+                indices.append([start + 2, start + 3])
+                indices.append([start + 0, start + 2])
+                indices.append([start + 1, start + 3])
+
+                indices.append([start + 4, start + 5])
+                indices.append([start + 6, start + 7])
+                indices.append([start + 4, start + 6])
+                indices.append([start + 5, start + 7])
+
+                indices.append([start + 0, start + 4])
+                indices.append([start + 1, start + 5])
+                indices.append([start + 2, start + 6])
+                indices.append([start + 3, start + 7])
+
+        shader =gpu.shader.from_builtin("UNIFORM_COLOR")
+
+        batch =gpu_extras.batch.batch_for_shader(shader,"LINES",vertices, indices=indices)
+
+        color =[0.5,1.0,1.0,1.0]
+        shader.bind()
+        shader.uniform_float("color",color)
+        batch.draw(shader)
+
 
 #パネル　ファイル名
 class OBJECT_PT_file_name(bpy.types.Panel):
@@ -171,19 +224,22 @@ classes=(
 
      
 #メニュー項目
-def draw_my_menu_to_topbar(self, context):
-    self.layout.menu("TOPBAR_MT_my_menu")
+#def draw_my_menu_to_topbar(self, context):
+ #   self.layout.menu("TOPBAR_MT_my_menu")
 
 def register():
     for cls in classes:
          bpy.utils.register_class(cls)
-    bpy.types.TOPBAR_MT_editor_menus.append(draw_my_menu_to_topbar)
+    bpy.types.TOPBAR_MT_editor_menus.append(TOPBAR_MT_my_menu.submenu)
+    DrawCollider.handle=bpy.types.SpaceView3D.draw_handler_add(DrawCollider.draw_colider,(),"WINDOW","POST_VIEW")
     print("レベルエディタが有効化されました。")
 
 def unregister():
+    
+    bpy.types.TOPBAR_MT_editor_menus.remove(TOPBAR_MT_my_menu.submenu)
+    bpy.types.SpaceView3D.draw_handler_remove(DrawCollider.handle,"WINDOW")
     for cls in classes:
          bpy.utils.unregister_class(cls)
-    bpy.types.TOPBAR_MT_editor_menus.remove(draw_my_menu_to_topbar)
     print("レベルエディタが無効化されました。")
 
 
